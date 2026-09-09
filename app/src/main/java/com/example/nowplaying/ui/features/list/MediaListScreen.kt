@@ -2,11 +2,11 @@ package com.example.nowplaying.ui.features.list
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +15,6 @@ import androidx.compose.material3.CardColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,17 +30,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import com.example.nowplaying.data.model.Song
-import com.example.nowplaying.ui.NPViewModel
+import com.example.nowplaying.ui.viewmodel.NPViewModel
 import com.example.nowplaying.ui.components.fadedEdge
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 
-val hardcodedList = listOf(
-    Song(),
-    Song(),
-    Song()
-)
+fun formatTimeStamp(timestamp: String): String {
+    return try {
+        val odt = OffsetDateTime.parse(timestamp)
+        val localDateTime = odt.atZoneSameInstant(ZoneId.systemDefault())
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyy HH:mm")
+        localDateTime.format(formatter)
+    } catch (e: Exception){
+        timestamp
+    }
+}
+
 
 @Composable
 fun MediaListScreen(
@@ -49,9 +58,20 @@ fun MediaListScreen(
     viewModel: NPViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    val historyItems = viewModel.historyFlow.collectAsLazyPagingItems()
+
     LazyColumn(modifier = modifier) {
-        items(hardcodedList) { item ->
-            MediaListItem(item)
+        items(
+            count = historyItems.itemCount,
+            key = {index -> historyItems[index]?.id ?: index }
+        ) { index ->
+            val item = historyItems[index]
+            if (item != null) {
+                MediaListItem(item)
+            } else {
+                MediaListItem(Song())
+            }
+
         }
     }
 }
@@ -83,7 +103,7 @@ fun MediaListItem(item: Song) {
                 contentScale = ContentScale.Fit
             )
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
                 Text(
                     text = item.title,
@@ -91,6 +111,7 @@ fun MediaListItem(item: Song) {
                         fontWeight = FontWeight.Bold
                     ),
                     maxLines = 1,
+                    softWrap = false,
                     overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
                     onTextLayout = { textLayoutResult ->
                         isTitleOverflow = textLayoutResult.hasVisualOverflow
@@ -109,6 +130,7 @@ fun MediaListItem(item: Song) {
                         fontWeight = FontWeight.Light
                     ),
                     maxLines = 1,
+                    softWrap = false,
                     overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
                     onTextLayout = { textLayoutResult ->
                         isArtistOverflow = textLayoutResult.hasVisualOverflow
@@ -120,6 +142,16 @@ fun MediaListItem(item: Song) {
                         ),
                         isVisible = isArtistOverflow
                     )
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = formatTimeStamp(item.timestamp),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Light,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip
                 )
             }
         }

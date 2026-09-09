@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -19,7 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.nowplaying.ui.NPViewModel
+import com.example.nowplaying.ui.viewmodel.NPViewModel
 import com.example.nowplaying.ui.features.list.MediaListScreen
 import com.example.nowplaying.ui.features.nowplaying.NowPlayingBar
 import com.example.nowplaying.ui.theme.NowPlayingTheme

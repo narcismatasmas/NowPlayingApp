@@ -64,4 +64,8 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
 // JSON converter
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+// Paging
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.okhttp.logging)
 }

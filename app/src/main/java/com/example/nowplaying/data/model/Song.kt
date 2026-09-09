@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 import java.sql.Timestamp
 
 data class Song (
+    val id: Int = 0,
     val success: Boolean = false,
     val device_id: String = "default",
     val title: String = "Unknown",

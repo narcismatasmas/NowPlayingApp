@@ -7,16 +7,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,15 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.example.nowplaying.ui.NPViewModel
+import com.example.nowplaying.ui.viewmodel.NPViewModel
 import com.example.nowplaying.ui.components.fadedEdge
 
 @Composable
@@ -57,7 +53,10 @@ fun NowPlayingBar(
             .height(100.dp)
             .padding(8.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardColors(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface)
+        colors = CardColors(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 8.dp
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -122,7 +121,7 @@ fun NowPlayingBar(
             IconButton(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .aspectRatio(1f),
+                    .aspectRatio(1f)                ,
                 shape = RoundedCornerShape(8.dp),
                 onClick = { /*TODO*/ },
                 colors = IconButtonDefaults.iconButtonColors(
