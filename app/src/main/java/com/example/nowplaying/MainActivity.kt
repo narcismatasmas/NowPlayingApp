@@ -39,11 +39,11 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)){
+                    Box(modifier = Modifier.fillMaxSize().padding(bottom = innerPadding.calculateBottomPadding())){
                         NavHost(
                             navController = navController,
                             startDestination = "list",
-                            modifier = Modifier.padding(innerPadding)
+                            modifier = Modifier
                         ) {
                             composable("list"){
                                 MediaListScreen()
