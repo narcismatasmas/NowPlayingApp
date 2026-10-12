@@ -1,5 +1,8 @@
 package com.example.nowplaying.ui.features.nowplaying
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -45,8 +48,10 @@ import com.example.nowplaying.ui.navigation.DetailRoute
 fun NowPlayingBar(
     modifier: Modifier = Modifier,
     viewModel: NPViewModel = viewModel(),
-    navController: NavController? = null
-){
+    navController: NavController? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
+) {
     val song by viewModel.currentSong.collectAsState()
     var isTitleOverflow by remember { mutableStateOf(false) }
     var isArtistOverflow by remember { mutableStateOf(false) }
@@ -59,7 +64,12 @@ fun NowPlayingBar(
             .height(100.dp)
             .padding(8.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardColors(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface),
+        colors = CardColors(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.onPrimary,
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.onSurface
+        ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 8.dp
         )
@@ -68,66 +78,93 @@ fun NowPlayingBar(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = song?.album_art ?: run {
-                    Song().album_art
-                },
-                contentDescription = "Album Art",
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(end = 16.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Fit
-            )
+            with(sharedTransitionScope) {
+                AsyncImage(
+                    model = song?.album_art ?: run {
+                        Song().album_art
+                    },
+                    contentDescription = "Album Art",
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(end = 16.dp)
+                        .sharedElement(
+                            sharedContentState = rememberSharedContentState(key = "album_art_${song?.id}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ -> tween(400) }
+                        )
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
             Column(
-                modifier = Modifier.weight(1f).padding(end = 16.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 16.dp)
             ) {
-                Text(
-                    text = song?.title ?: run {
-                        "Unknown/Undetected"
-                    },
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
-                    onTextLayout = { textLayoutResult ->
-                        isTitleOverflow = textLayoutResult.hasVisualOverflow
-                    },
-                    modifier = Modifier.fadedEdge(
-                        brush = Brush.horizontalGradient(
-                            0.85f to Color.Black, // Opaco hasta el 85%
-                            1f to Color.Transparent // Transparente al 100%
+                with(sharedTransitionScope) {
+                    Text(
+                        text = song?.title ?: run {
+                            "Unknown/Undetected"
+                        },
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
                         ),
-                        isVisible = isTitleOverflow
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
+                        onTextLayout = { textLayoutResult ->
+                            isTitleOverflow = textLayoutResult.hasVisualOverflow
+                        },
+                        modifier = Modifier
+                            .fadedEdge(
+                                brush = Brush.horizontalGradient(
+                                    0.85f to Color.Black, // Opaco hasta el 85%
+                                    1f to Color.Transparent // Transparente al 100%
+                                ),
+                                isVisible = isTitleOverflow
+                            )
+                            .sharedElement(
+                                sharedContentState = rememberSharedContentState(key = "title_${song?.id}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _, _ -> tween(400) }
+                            )
                     )
-                )
-                Text(
-                    text = song?.artist ?: run {
-                        "Unknown/Undetected"
-                    },
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Light
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
-                    onTextLayout = { textLayoutResult ->
-                        isArtistOverflow = textLayoutResult.hasVisualOverflow
-                    },
-                    modifier = Modifier.fadedEdge(
-                        brush = Brush.horizontalGradient(
-                            0.85f to Color.Black, // Opaco hasta el 85%
-                            1f to Color.Transparent // Transparente al 100%
+
+                }
+                with(sharedTransitionScope) {
+                    Text(
+                        text = song?.artist ?: run {
+                            "Unknown/Undetected"
+                        },
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Light
                         ),
-                        isVisible = isArtistOverflow
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
+                        onTextLayout = { textLayoutResult ->
+                            isArtistOverflow = textLayoutResult.hasVisualOverflow
+                        },
+                        modifier = Modifier
+                            .sharedElement(
+                                sharedContentState = rememberSharedContentState(key = "artist_${song?.id}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _, _ -> tween(400) }
+                            )
+                            .fadedEdge(
+                                brush = Brush.horizontalGradient(
+                                    0.85f to Color.Black, // Opaco hasta el 85%
+                                    1f to Color.Transparent // Transparente al 100%
+                                ),
+                                isVisible = isArtistOverflow
+                            )
                     )
-                )
+                }
             }
 
             IconButton(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .aspectRatio(1f)                ,
+                    .aspectRatio(1f),
                 shape = RoundedCornerShape(8.dp),
                 onClick = {
                     navController?.navigate(DetailRoute(source = "now_playing"))

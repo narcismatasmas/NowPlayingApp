@@ -1,6 +1,10 @@
 package com.example.nowplaying.ui.features.list
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,7 +57,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
@@ -82,17 +88,19 @@ fun formatTimeStamp(timestamp: String): String {
 fun MediaListScreen(
     navController: NavController? = null,
     viewModel: NPViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
 ) {
     val historyItems = viewModel.historyFlow.collectAsLazyPagingItems()
 
     // 1. Guardamos la altura MÁXIMA que necesita el título en píxeles.
     // Empezamos en 0 y la mediremos después.
-    var maxTitleHeightPx by remember { mutableStateOf(0f) }
+    var maxTitleHeightPx by rememberSaveable { mutableStateOf(0f) }
     // Este es el multiplicador. A 0.5f, la cabecera se encoge a la mitad de velocidad que la lista.
 
     // El offset actual de nuestra barra. 0 = visible entera. -maxTitleHeightPx = oculta entera.
-    var currentHeightOffsetPx by remember { mutableStateOf(0f) }
+    var currentHeightOffsetPx by rememberSaveable { mutableStateOf(0f) }
 
     // --- CONFIGURACIÓN ---
     val scrollSpeedFactor = 0.5f
@@ -104,7 +112,7 @@ fun MediaListScreen(
     val deadzoneThresholdPx = with(density) { deadzoneThresholdDp.toPx() }
 
     // Acumulador temporal para saber si hemos pasado la zona muerta al subir
-    var upwardScrollAccumulator by remember { mutableStateOf(0f) }
+    var upwardScrollAccumulator by rememberSaveable { mutableStateOf(0f) }
 
     // Nuestro motor personalizado que lee el scroll desde cualquier punto de la lista
     val nestedScrollConnection = remember {
@@ -231,14 +239,32 @@ fun MediaListScreen(
                 }
             }
         }
-        
+
+        val currentSong by viewModel.currentSong.collectAsState()
+
+        val targetFadeStart = if (currentSong != null) 0.80f else 0.90f
+        val targetFadeEnd = if (currentSong != null) 0.95f else 1f
+
+        val animatedFadeStart by animateFloatAsState(
+            targetValue = targetFadeStart,
+            animationSpec = tween(500),
+            label = "FadedStartAnimated"
+        )
+
+        val animatedFadeEnd by animateFloatAsState(
+            targetValue = targetFadeEnd,
+            animationSpec = tween(500),
+            label = "FadedEndAnimated"
+        )
+
+
         LazyColumn(
             modifier = Modifier
                 .padding(start = 8.dp, end = 8.dp, top = 8.dp)
                 .clip(shape = RoundedCornerShape(topEnd = 24.dp, topStart = 24.dp))
                 .fadedEdge(brush = Brush.verticalGradient(
-                        0.80f to Color.Black, // Opaco hasta el 85%
-                        0.95f to Color.Transparent // Transparente al 100%
+                        animatedFadeStart to Color.Black, // Opaco hasta el 85%
+                        animatedFadeEnd to Color.Transparent // Transparente al 100%
                     )
                 )
         ) {
@@ -248,9 +274,9 @@ fun MediaListScreen(
             ) { index ->
                 val item = historyItems[index]
                 if (item != null) {
-                    MediaListItem(item, navController, viewModel)
+                    MediaListItem(item, navController, viewModel, sharedTransitionScope, animatedVisibilityScope)
                 } else {
-                    MediaListItem(Song(), navController, viewModel)
+                    MediaListItem(Song(), navController, viewModel, sharedTransitionScope, animatedVisibilityScope)
                 }
             }
             
@@ -263,88 +289,123 @@ fun MediaListScreen(
 }
 
 @Composable
-fun MediaListItem(item: Song, navController: NavController? = null, viewModel: NPViewModel) {
+fun MediaListItem(
+    item: Song,
+    navController: NavController? = null,
+    viewModel: NPViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
+) {
     var isTitleOverflow by remember { mutableStateOf(false) }
     var isArtistOverflow by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(96.dp)
-            .padding(bottom = 4.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardColors(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface),
-        onClick = {
-            viewModel.selectHistorySong(item)
-            navController?.navigate(route = DetailRoute(source = "detail"))
-        }
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.Top
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp)
+                .padding(bottom = 4.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardColors(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface),
+            onClick = {
+                viewModel.selectHistorySong(item)
+                navController?.navigate(route = DetailRoute(source = "detail"))
+            }
         ) {
-            AsyncImage(
-                model = item.album_art,
-                contentDescription = "Album Art",
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(end = 16.dp)
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Fit
-            )
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight()
+            Row(
+                modifier = Modifier.padding(8.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
-                    onTextLayout = { textLayoutResult ->
-                        isTitleOverflow = textLayoutResult.hasVisualOverflow
-                    },
-                    modifier = Modifier.fadedEdge(
-                        brush = Brush.horizontalGradient(
-                            0.85f to Color.Black, // Opaco hasta el 85%
-                            1f to Color.Transparent // Transparente al 100%
-                        ),
-                        isVisible = isTitleOverflow
+                with(sharedTransitionScope) {
+                    AsyncImage(
+                        model = item.album_art,
+                        contentDescription = "Album Art",
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(end = 16.dp)
+                            .sharedElement(
+                                sharedContentState = rememberSharedContentState(key = "album_art_${item.id}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _, _ -> tween(400) }
+                            )
+                            .clip(RoundedCornerShape(16.dp))
+                        ,
+                        contentScale = ContentScale.Fit
                     )
-                )
-                Text(
-                    text = item.artist,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Light
-                    ),
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
-                    onTextLayout = { textLayoutResult ->
-                        isArtistOverflow = textLayoutResult.hasVisualOverflow
-                    },
-                    modifier = Modifier.fadedEdge(
-                        brush = Brush.horizontalGradient(
-                            0.85f to Color.Black, // Opaco hasta el 85%
-                            1f to Color.Transparent // Transparente al 100%
+                }
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    with(sharedTransitionScope) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
+                            onTextLayout = { textLayoutResult ->
+                                isTitleOverflow = textLayoutResult.hasVisualOverflow
+                            },
+                            modifier = Modifier
+                                .sharedElement(
+                                    sharedContentState = rememberSharedContentState(key = "title_${item.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = { _, _ -> tween(400) }
+                                )
+                                .fadedEdge(
+                                    brush = Brush.horizontalGradient(
+                                        0.85f to Color.Black, // Opaco hasta el 85%
+                                        1f to Color.Transparent // Transparente al 100%
+                                    ),
+                                    isVisible = isTitleOverflow
+                                )
+
+                        )
+                    }
+                    with(sharedTransitionScope) {
+                        Text(
+                            text = item.artist,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Light
+                            ),
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Clip, // Importante: Clip en lugar de Ellipsis
+                            onTextLayout = { textLayoutResult ->
+                                isArtistOverflow = textLayoutResult.hasVisualOverflow
+                            },
+                            modifier = Modifier
+                                .sharedElement(
+                                    sharedContentState = rememberSharedContentState(key = "artist_${item.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = { _, _ -> tween(400) }
+                                )
+                                .fadedEdge(
+                                    brush = Brush.horizontalGradient(
+                                        0.85f to Color.Black, // Opaco hasta el 85%
+                                        1f to Color.Transparent // Transparente al 100%
+                                    ),
+                                    isVisible = isArtistOverflow
+                                )
+
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = formatTimeStamp(item.timestamp),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Light,
+                            color = MaterialTheme.colorScheme.onSurface
                         ),
-                        isVisible = isArtistOverflow
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip
                     )
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = formatTimeStamp(item.timestamp),
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Light,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip
-                )
+                }
             }
         }
-    }
+
+
 }
 
