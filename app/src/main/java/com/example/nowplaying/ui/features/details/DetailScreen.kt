@@ -80,7 +80,7 @@ fun DetailScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Now Playing",
+                    text = if (source == "now_playing") "Now Playing" else "Song Details",
                     style = TextStyle(
                         fontSize = MaterialTheme.typography.headlineLarge.fontSize,
                         fontWeight = FontWeight.Bold,

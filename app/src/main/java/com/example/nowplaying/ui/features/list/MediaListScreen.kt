@@ -57,8 +57,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
@@ -69,7 +72,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.paging.LoadState
 import com.example.nowplaying.ui.navigation.DetailRoute
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 fun formatTimeStamp(timestamp: String): String {
     return try {
@@ -92,7 +98,14 @@ fun MediaListScreen(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ) {
+    val coroutineScope = rememberCoroutineScope()
+
+    val listState = rememberLazyListState()
+
     val historyItems = viewModel.historyFlow.collectAsLazyPagingItems()
+
+    var isRefreshing by remember {mutableStateOf(false)}
+    val pullToRefreshState = rememberPullToRefreshState()
 
     // 1. Guardamos la altura MÁXIMA que necesita el título en píxeles.
     // Empezamos en 0 y la mediremos después.
@@ -257,34 +270,54 @@ fun MediaListScreen(
             label = "FadedEndAnimated"
         )
 
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    isRefreshing = true
 
-        LazyColumn(
+                    currentHeightOffsetPx = 0f
+                    upwardScrollAccumulator = 0f
+
+                    historyItems.refresh()
+                    delay(500)
+                    isRefreshing = false
+                }
+            },
+            state = pullToRefreshState,
             modifier = Modifier
                 .padding(start = 8.dp, end = 8.dp, top = 8.dp)
                 .clip(shape = RoundedCornerShape(topEnd = 24.dp, topStart = 24.dp))
-                .fadedEdge(brush = Brush.verticalGradient(
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadedEdge(brush = Brush.verticalGradient(
                         animatedFadeStart to Color.Black, // Opaco hasta el 85%
                         animatedFadeEnd to Color.Transparent // Transparente al 100%
                     )
-                )
-        ) {
-            items(
-                count = historyItems.itemCount,
-                key = {index -> historyItems[index]?.id ?: index }
-            ) { index ->
-                val item = historyItems[index]
-                if (item != null) {
-                    MediaListItem(item, navController, viewModel, sharedTransitionScope, animatedVisibilityScope)
-                } else {
-                    MediaListItem(Song(), navController, viewModel, sharedTransitionScope, animatedVisibilityScope)
+                    )
+            ) {
+                items(
+                    count = historyItems.itemCount,
+                    key = {index -> historyItems[index]?.id ?: index }
+                ) { index ->
+                    val item = historyItems[index]
+                    if (item != null) {
+                        MediaListItem(item, navController, viewModel, sharedTransitionScope, animatedVisibilityScope)
+                    } else {
+                        MediaListItem(Song(), navController, viewModel, sharedTransitionScope, animatedVisibilityScope)
+                    }
+                }
+
+                // Elemento extra al final para compensar el difuminado
+                item {
+                    Spacer(modifier = Modifier.height(100.dp)) // Ajusta esta altura según lo que necesites
                 }
             }
-            
-            // Elemento extra al final para compensar el difuminado
-            item {
-                Spacer(modifier = Modifier.height(100.dp)) // Ajusta esta altura según lo que necesites
-            }
         }
+
     }
 }
 
