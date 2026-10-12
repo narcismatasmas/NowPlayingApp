@@ -34,18 +34,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.example.nowplaying.data.model.Song
 import com.example.nowplaying.ui.viewmodel.NPViewModel
 import com.example.nowplaying.ui.components.fadedEdge
+import com.example.nowplaying.ui.navigation.DetailRoute
 
 @Composable
 fun NowPlayingBar(
     modifier: Modifier = Modifier,
-    viewModel: NPViewModel = viewModel()
+    viewModel: NPViewModel = viewModel(),
+    navController: NavController? = null
 ){
     val song by viewModel.currentSong.collectAsState()
     var isTitleOverflow by remember { mutableStateOf(false) }
     var isArtistOverflow by remember { mutableStateOf(false) }
+
+    if (song == null) return
 
     Card(
         modifier = modifier
@@ -64,7 +70,7 @@ fun NowPlayingBar(
         ) {
             AsyncImage(
                 model = song?.album_art ?: run {
-                    "https://fastly.picsum.photos/id/964/200/200.jpg?hmac=Xpyys0fUK6t9mTJx-ZmJH2T9G2Hp7bfieNlb-dHqBek"
+                    Song().album_art
                 },
                 contentDescription = "Album Art",
                 modifier = Modifier
@@ -123,7 +129,9 @@ fun NowPlayingBar(
                     .fillMaxHeight()
                     .aspectRatio(1f)                ,
                 shape = RoundedCornerShape(8.dp),
-                onClick = { /*TODO*/ },
+                onClick = {
+                    navController?.navigate(DetailRoute(source = "now_playing"))
+                },
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = MaterialTheme.colorScheme.tertiary,
                     contentColor = MaterialTheme.colorScheme.onTertiary

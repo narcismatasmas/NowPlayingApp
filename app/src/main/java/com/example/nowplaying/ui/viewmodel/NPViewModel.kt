@@ -23,6 +23,14 @@ class NPViewModel: ViewModel() {
 
     val currentSong: StateFlow<Song?> = _currentSong
 
+    private val _selectedHistorySong = MutableStateFlow<Song?>(null)
+
+    val selectedHistorySong: StateFlow<Song?> = _selectedHistorySong
+
+    fun selectHistorySong(song: Song) {
+        _selectedHistorySong.value = song
+    }
+
     val historyFlow: Flow<PagingData<Song>> = Pager(
         config = PagingConfig(
             pageSize = 25, // Cuántos elementos cargar por página
@@ -39,7 +47,12 @@ class NPViewModel: ViewModel() {
             while (true) {
                 try {
                     val song = ApiRequester.retrofitService.getNowPlaying(devce_id)
-                    _currentSong.value = song
+                    if (song.title == "Unknown" && song.artist == "Unknown"){
+                        _currentSong.value = null
+                    } else
+                    {
+                        _currentSong.value = song
+                    }
                     Log.d("API", "Canción actualizada: ${song.title}")
                 } catch (e: Exception){
                     Log.e("Error", "Fallo al obtener canción: ${e.message}")

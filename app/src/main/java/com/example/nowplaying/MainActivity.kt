@@ -18,9 +18,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.example.nowplaying.ui.features.details.DetailScreen
 import com.example.nowplaying.ui.viewmodel.NPViewModel
 import com.example.nowplaying.ui.features.list.MediaListScreen
 import com.example.nowplaying.ui.features.nowplaying.NowPlayingBar
+import com.example.nowplaying.ui.navigation.DetailRoute
+import com.example.nowplaying.ui.navigation.MediaListRoute
 import com.example.nowplaying.ui.theme.NowPlayingTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,12 +46,19 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize().padding(bottom = innerPadding.calculateBottomPadding())){
                         NavHost(
                             navController = navController,
-                            startDestination = "list",
+                            startDestination = MediaListRoute,
                             modifier = Modifier
                         ) {
-                            composable("list"){
-                                MediaListScreen()
+                            /*composable("list"){
+                                MediaListScreen(viewModel = sharedViewModel)
 
+                            }*/
+                            composable<MediaListRoute> {
+                                MediaListScreen(navController = navController, viewModel = sharedViewModel)
+                            }
+                            composable<DetailRoute>{ backStackEntry ->
+                                val routeParams = backStackEntry.toRoute<DetailRoute>()
+                                DetailScreen(navController = navController, viewModel = sharedViewModel, source = routeParams.source)
                             }
                         }
 
@@ -55,7 +66,8 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(16.dp),
-                            viewModel = sharedViewModel
+                            viewModel = sharedViewModel,
+                            navController = navController
                         )
                     }
 

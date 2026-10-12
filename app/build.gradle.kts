@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -69,4 +70,8 @@ dependencies {
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
     implementation(libs.okhttp.logging)
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3") // O la versión más reciente
+// Asegúrate de tener la navegación moderna (versión 2.8.0 o superior es obligatoria para esto)
+    implementation("androidx.navigation:navigation-compose:2.8.4")
 }

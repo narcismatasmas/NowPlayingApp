@@ -1,6 +1,8 @@
 package com.example.nowplaying.ui.features.list
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -52,6 +54,7 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
@@ -60,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import com.example.nowplaying.ui.navigation.DetailRoute
 
 fun formatTimeStamp(timestamp: String): String {
     return try {
@@ -114,7 +118,7 @@ fun MediaListScreen(
                     upwardScrollAccumulator = 0f
 
                     val scaledDelta = delta * scrollSpeedFactor
-                    currentHeightOffsetPx = (currentHeightOffsetPx + scaledDelta).coerceIn(-(maxTitleHeightPx- statusBarHeightPx), 0f)
+                    currentHeightOffsetPx = (currentHeightOffsetPx + scaledDelta).coerceIn(-(maxTitleHeightPx), 0f)
 
                 } else if (delta > 0 && currentHeightOffsetPx < 0f) {
                     // 2. SCROLL HACIA ARRIBA (Mostrar barra) y la barra está parcial o totalmente oculta
@@ -124,7 +128,7 @@ fun MediaListScreen(
                     if (upwardScrollAccumulator > deadzoneThresholdPx) {
                         // Al delta le restamos lo que ya consumió la zona muerta para que el inicio sea suave
                         val activeDelta = delta * scrollSpeedFactor
-                        currentHeightOffsetPx = (currentHeightOffsetPx + activeDelta).coerceIn(-(maxTitleHeightPx - statusBarHeightPx), 0f)
+                        currentHeightOffsetPx = (currentHeightOffsetPx + activeDelta).coerceIn(-(maxTitleHeightPx), 0f)
                     }
                 } else if (delta > 0 && currentHeightOffsetPx == 0f) {
                     // Si hacemos scroll hacia arriba y la barra YA está 100% visible, no hacemos nada extra.
@@ -147,7 +151,7 @@ fun MediaListScreen(
             .nestedScroll(nestedScrollConnection)
     ) {
         val currentHeightDp = with(density) {
-            (maxTitleHeightPx + currentHeightOffsetPx).coerceAtLeast(statusBarHeightPx).toDp()
+            (maxTitleHeightPx + currentHeightOffsetPx).coerceAtLeast(0f).toDp()
         }
 
         // Calculamos la opacidad:
@@ -167,6 +171,12 @@ fun MediaListScreen(
         } else {
             1f
         }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(color = MaterialTheme.colorScheme.primary)
+                .windowInsetsTopHeight(WindowInsets.statusBars)
+        )
 
         Box(
             modifier = Modifier
@@ -197,22 +207,27 @@ fun MediaListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                 ) {
-                    Spacer(modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars))
-
-                    Text(
-                        // Mantenemos solo paddings laterales y superior. NADA por abajo.
+                    Row(
                         modifier = Modifier
-                            .padding(start = 16.dp, top = 8.dp)
+                            .padding(start = 16.dp, top = 8.dp, end = 16.dp)
+                            .fillMaxWidth()
                             .alpha(titleAlpha),
-                        text = "Media List",
-                        style = TextStyle(
-                            fontSize = MaterialTheme.typography.headlineLarge.fontSize,
-                            fontWeight = FontWeight.Bold,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            // Mantenemos solo paddings laterales y superior. NADA por abajo.
+                            text = "Historial",
+                            style = TextStyle(
+                                fontSize = MaterialTheme.typography.headlineLarge.fontSize,
+                                fontWeight = FontWeight.Bold,
+                            )
                         )
-                    )
+                    }
+
                     // Este Spacer actúa como tu padding inferior.
                     // Al encogerse el Box padre, esto será lo primero que se recorte de forma natural.
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -233,9 +248,9 @@ fun MediaListScreen(
             ) { index ->
                 val item = historyItems[index]
                 if (item != null) {
-                    MediaListItem(item)
+                    MediaListItem(item, navController, viewModel)
                 } else {
-                    MediaListItem(Song())
+                    MediaListItem(Song(), navController, viewModel)
                 }
             }
             
@@ -248,7 +263,7 @@ fun MediaListScreen(
 }
 
 @Composable
-fun MediaListItem(item: Song) {
+fun MediaListItem(item: Song, navController: NavController? = null, viewModel: NPViewModel) {
     var isTitleOverflow by remember { mutableStateOf(false) }
     var isArtistOverflow by remember { mutableStateOf(false) }
 
@@ -258,7 +273,11 @@ fun MediaListItem(item: Song) {
             .height(96.dp)
             .padding(bottom = 4.dp),
         shape = RoundedCornerShape(8.dp),
-        colors = CardColors(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface)
+        colors = CardColors(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface),
+        onClick = {
+            viewModel.selectHistorySong(item)
+            navController?.navigate(route = DetailRoute(source = "detail"))
+        }
     ) {
         Row(
             modifier = Modifier.padding(8.dp),
